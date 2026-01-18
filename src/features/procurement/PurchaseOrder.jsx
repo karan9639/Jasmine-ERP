@@ -17,7 +17,8 @@ import { formatDate, formatMoney } from "@/lib/formatters"
 
 export function PurchaseOrder() {
   const { addToast } = useAppStore()
-  const [formData, setFormData] = useState({
+
+  const defaultFormData = () => ({
     poNo: "",
     poDate: formatDate(new Date(), "YYYY-MM-DD"),
     vendorId: "",
@@ -27,9 +28,19 @@ export function PurchaseOrder() {
     remarks: "",
   })
 
-  const [lines, setLines] = useState([
+  const defaultLines = () => [
     { id: 1, item: "", specification: "", uom: "Kgs", qty: 0, rate: 0, taxRate: 18, amount: 0 },
-  ])
+  ]
+
+  const [formData, setFormData] = useState(defaultFormData())
+
+  const [lines, setLines] = useState(defaultLines())
+
+  const handleNew = () => {
+    setFormData(defaultFormData())
+    setLines(defaultLines())
+    addToast({ type: "info", message: "New purchase order" })
+  }
 
   const handleSave = () => {
     addToast({ type: "success", message: "Purchase Order saved successfully" })
@@ -155,7 +166,7 @@ export function PurchaseOrder() {
 
   return (
     <PageShell title="Purchase Order">
-      <ActionBar onNew={() => {}} onSave={handleSave} onPrint={() => {}} />
+      <ActionBar onNew={handleNew} onSave={handleSave} onPrint={() => {}} />
 
       <Card>
         <CardContent className="p-6 space-y-6">

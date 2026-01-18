@@ -1,8 +1,9 @@
 import { cn } from "@/lib/utils"
 import { forwardRef } from "react"
+import { Label } from "@/components/ui/Label"
 
-export const Input = forwardRef(({ className, type = "text", ...props }, ref) => {
-  return (
+export const Input = forwardRef(({ className, type = "text", label, required, ...props }, ref) => {
+  const control = (
     <input
       type={type}
       className={cn(
@@ -10,8 +11,18 @@ export const Input = forwardRef(({ className, type = "text", ...props }, ref) =>
         className,
       )}
       ref={ref}
+      required={required}
       {...props}
     />
+  )
+
+  if (!label) return control
+
+  return (
+    <div className="space-y-1">
+      <Label required={required}>{label}</Label>
+      {control}
+    </div>
   )
 })
 

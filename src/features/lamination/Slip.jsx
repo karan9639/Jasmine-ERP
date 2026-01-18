@@ -31,7 +31,8 @@ const mockData = [
 
 export function LaminationSlip() {
   const { addToast } = useAppStore()
-  const [formData, setFormData] = useState({
+
+  const defaultFormData = () => ({
     docType: "Packing Slip",
     series: "PS",
     packingSlipNo: "",
@@ -42,7 +43,16 @@ export function LaminationSlip() {
     storeLocation: "",
   })
 
-  const [lines, setLines] = useState(mockData)
+  const defaultLines = () => mockData
+
+  const [formData, setFormData] = useState(defaultFormData())
+  const [lines, setLines] = useState(defaultLines())
+
+  const handleNew = () => {
+    setFormData(defaultFormData())
+    setLines(defaultLines())
+    addToast({ type: "info", message: "New lamination slip" })
+  }
 
   const handleSave = () => {
     addToast({ type: "success", message: "Lamination slip saved successfully" })
@@ -87,7 +97,7 @@ export function LaminationSlip() {
         </Button>
       }
     >
-      <ActionBar onNew={() => {}} onSave={handleSave} onPrint={() => {}} />
+      <ActionBar onNew={handleNew} onSave={handleSave} onPrint={() => {}} />
 
       <Card>
         <CardContent className="p-6 space-y-6">

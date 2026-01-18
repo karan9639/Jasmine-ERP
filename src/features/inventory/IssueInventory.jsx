@@ -17,7 +17,8 @@ import { formatDate } from "@/lib/formatters"
 
 export function IssueInventory() {
   const { addToast } = useAppStore()
-  const [formData, setFormData] = useState({
+
+  const defaultFormData = () => ({
     issueNo: "",
     issueDate: formatDate(new Date(), "YYYY-MM-DD"),
     department: "",
@@ -27,9 +28,18 @@ export function IssueInventory() {
     remarks: "",
   })
 
-  const [lines, setLines] = useState([
+  const defaultLines = () => [
     { id: 1, item: "", specification: "", uom: "Kgs", requestedQty: 0, issuedQty: 0, lotNo: "", rackNo: "" },
-  ])
+  ]
+
+  const [formData, setFormData] = useState(defaultFormData())
+  const [lines, setLines] = useState(defaultLines())
+
+  const handleNew = () => {
+    setFormData(defaultFormData())
+    setLines(defaultLines())
+    addToast({ type: "info", message: "New issue inventory" })
+  }
 
   const handleSave = () => {
     addToast({ type: "success", message: "Issue inventory saved successfully" })
@@ -157,7 +167,7 @@ export function IssueInventory() {
 
   return (
     <PageShell title="Issue Inventory">
-      <ActionBar onNew={() => {}} onSave={handleSave} onPrint={() => {}} />
+      <ActionBar onNew={handleNew} onSave={handleSave} onPrint={() => {}} />
 
       <Card>
         <CardContent className="p-6 space-y-6">

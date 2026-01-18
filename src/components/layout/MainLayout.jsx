@@ -4,6 +4,7 @@ import { Sidebar } from "./Sidebar"
 import { Topbar } from "./Topbar"
 import { useAppStore } from "@/state/useAppStore"
 import { useEffect } from "react"
+import { Outlet } from "react-router-dom"
 
 export function MainLayout({ children }) {
   const { sidebarCollapsed, theme } = useAppStore()
@@ -21,8 +22,10 @@ export function MainLayout({ children }) {
       <Sidebar />
       <div className={`transition-all duration-300 ${sidebarCollapsed ? "ml-16" : "ml-64"}`}>
         <Topbar />
-        <main className="min-h-[calc(100vh-56px)]">{children}</main>
+        <main className="min-h-[calc(100vh-56px)]">{children ?? <Outlet />}</main>
       </div>
     </div>
   )
 }
+
+export default MainLayout

@@ -9,6 +9,14 @@ export function Card({ className, ...props }) {
   )
 }
 
+// Compatibility: allow both <CardHeader /> usage and <Card.Header /> usage.
+// This keeps newer screens working without rewriting them.
+Card.Header = CardHeader
+Card.Title = CardTitle
+Card.Description = CardDescription
+Card.Content = CardContent
+Card.Footer = CardFooter
+
 export function CardHeader({ className, ...props }) {
   return <div className={cn("flex flex-col space-y-1.5 p-6", className)} {...props} />
 }

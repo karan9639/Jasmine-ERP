@@ -16,7 +16,8 @@ import { formatDate } from "@/lib/formatters"
 
 export function Indent() {
   const { addToast } = useAppStore()
-  const [formData, setFormData] = useState({
+
+  const defaultFormData = () => ({
     indentNo: "",
     indentDate: formatDate(new Date(), "YYYY-MM-DD"),
     department: "",
@@ -24,9 +25,16 @@ export function Indent() {
     priority: "Normal",
   })
 
-  const [lines, setLines] = useState([
-    { id: 1, item: "", specification: "", uom: "Kgs", qty: 0, requiredDate: "", purpose: "" },
-  ])
+  const defaultLines = () => [{ id: 1, item: "", specification: "", uom: "Kgs", qty: 0, requiredDate: "", purpose: "" }]
+
+  const [formData, setFormData] = useState(defaultFormData())
+  const [lines, setLines] = useState(defaultLines())
+
+  const handleNew = () => {
+    setFormData(defaultFormData())
+    setLines(defaultLines())
+    addToast({ type: "info", message: "New indent" })
+  }
 
   const handleSave = () => {
     addToast({ type: "success", message: "Indent saved successfully" })
@@ -132,7 +140,7 @@ export function Indent() {
 
   return (
     <PageShell title="Material Indent">
-      <ActionBar onNew={() => {}} onSave={handleSave} onPrint={() => {}} />
+      <ActionBar onNew={handleNew} onSave={handleSave} onPrint={() => {}} />
 
       <Card>
         <CardContent className="p-6 space-y-6">

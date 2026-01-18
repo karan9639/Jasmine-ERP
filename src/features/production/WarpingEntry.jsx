@@ -37,8 +37,18 @@ const mockData = [
 
 export function WarpingEntry() {
   const { addToast } = useAppStore()
-  const [entries, setEntries] = useState(mockData)
-  const [date, setDate] = useState(formatDate(new Date(), "YYYY-MM-DD"))
+
+  const defaultEntries = () => mockData
+  const defaultDate = () => formatDate(new Date(), "YYYY-MM-DD")
+
+  const [entries, setEntries] = useState(defaultEntries())
+  const [date, setDate] = useState(defaultDate())
+
+  const handleNew = () => {
+    setEntries(defaultEntries())
+    setDate(defaultDate())
+    addToast({ type: "info", message: "New warping entry" })
+  }
 
   const handleSave = () => {
     addToast({ type: "success", message: "Warping entry saved successfully" })
@@ -90,7 +100,7 @@ export function WarpingEntry() {
         </Button>
       }
     >
-      <ActionBar onNew={() => {}} onSave={handleSave} onPrint={() => {}} />
+      <ActionBar onNew={handleNew} onSave={handleSave} onPrint={() => {}} />
 
       <Card>
         <CardContent className="p-6 space-y-4">

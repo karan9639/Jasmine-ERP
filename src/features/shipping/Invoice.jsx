@@ -16,7 +16,8 @@ import { formatDate, formatMoney } from "@/lib/formatters"
 
 export function Invoice() {
   const { addToast } = useAppStore()
-  const [formData, setFormData] = useState({
+
+  const defaultFormData = () => ({
     series: "INV",
     invoiceNo: "",
     invoiceDate: formatDate(new Date(), "YYYY-MM-DD"),
@@ -36,7 +37,17 @@ export function Invoice() {
     jwCharges: 0,
   })
 
-  const [lines, setLines] = useState([{ id: 1, product: "", hsn: "", qty: 0, rate: 0, amount: 0 }])
+  const defaultLines = () => [{ id: 1, product: "", hsn: "", qty: 0, rate: 0, amount: 0 }]
+
+  const [formData, setFormData] = useState(defaultFormData())
+
+  const [lines, setLines] = useState(defaultLines())
+
+  const handleNew = () => {
+    setFormData(defaultFormData())
+    setLines(defaultLines())
+    addToast({ type: "info", message: "New invoice" })
+  }
 
   const handleSave = () => {
     addToast({ type: "success", message: "Invoice saved successfully" })
@@ -163,7 +174,7 @@ export function Invoice() {
         </div>
       }
     >
-      <ActionBar onNew={() => {}} onSave={handleSave} onPrint={() => {}} />
+      <ActionBar onNew={handleNew} onSave={handleSave} onPrint={() => {}} />
 
       <Card>
         <CardContent className="p-6 space-y-6">

@@ -15,7 +15,8 @@ import { formatDate } from "@/lib/formatters"
 
 export function DyeingJobcard() {
   const { addToast } = useAppStore()
-  const [formData, setFormData] = useState({
+
+  const defaultFormData = () => ({
     jobcardNo: "",
     jobcardDate: formatDate(new Date(), "YYYY-MM-DD"),
     scheduleNo: "",
@@ -26,7 +27,7 @@ export function DyeingJobcard() {
     remarks: "",
   })
 
-  const [lines, setLines] = useState([
+  const defaultLines = () => [
     {
       id: 1,
       label: "",
@@ -39,7 +40,16 @@ export function DyeingJobcard() {
       qtyKgs: 0,
       status: "Pending",
     },
-  ])
+  ]
+
+  const [formData, setFormData] = useState(defaultFormData())
+  const [lines, setLines] = useState(defaultLines())
+
+  const handleNew = () => {
+    setFormData(defaultFormData())
+    setLines(defaultLines())
+    addToast({ type: "info", message: "New dyeing jobcard" })
+  }
 
   const handleSave = () => {
     addToast({ type: "success", message: "Dyeing jobcard saved successfully" })
@@ -59,7 +69,7 @@ export function DyeingJobcard() {
 
   return (
     <PageShell title="Dyeing Jobcard">
-      <ActionBar onNew={() => {}} onSave={handleSave} onPrint={() => {}} />
+      <ActionBar onNew={handleNew} onSave={handleSave} onPrint={() => {}} />
 
       <Card>
         <CardContent className="p-6 space-y-6">

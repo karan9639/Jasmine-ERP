@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import {
   ChevronDown,
@@ -143,8 +143,8 @@ const menuItems = [
     label: "Quality",
     icon: ClipboardCheck,
     children: [
-      { label: "Quality Checking", path: "/quality/checking" },
-      { label: "Quality Check", path: "/quality/check" },
+      { label: "Inspection Entry", path: "/quality/inspection-entry" },
+      { label: "Test Report", path: "/quality/test-report" },
       { label: "Daily Quality", path: "/quality/reports/daily-quality" },
       { label: "Quality Report", path: "/quality/reports/quality" },
     ],
@@ -153,10 +153,12 @@ const menuItems = [
     label: "Master Data",
     icon: Database,
     children: [
+      { label: "Company", path: "/master-data/company" },
       { label: "Employee", path: "/master-data/employee" },
       { label: "Brand", path: "/master-data/brand" },
       { label: "Customer", path: "/master-data/customer" },
       { label: "Vendor", path: "/master-data/vendor" },
+      { label: "Item", path: "/master-data/item" },
       { label: "Taxation", path: "/master-data/taxation" },
       { label: "SFL/TEX-N-NET Mapping", path: "/master-data/sfl-texnet-mapping" },
       { label: "NPD", path: "/master-data/npd" },
@@ -171,10 +173,10 @@ const menuItems = [
     label: "Reports",
     icon: FileText,
     children: [
-      { label: "Production Detail", path: "/reports/production-detail" },
-      { label: "Despatches on Challan", path: "/reports/despatches-on-challan" },
-      { label: "Dyed but DJC Open", path: "/reports/dyed-but-djc-open" },
-      { label: "Lamination Production", path: "/reports/lamination-production" },
+      { label: "Stock Report", path: "/reports/stock" },
+      { label: "Production Report", path: "/reports/production" },
+      { label: "Sales Report", path: "/reports/sales" },
+      { label: "Other Reports", path: "/reports/other" },
     ],
   },
   {
@@ -188,12 +190,17 @@ const menuItems = [
 ]
 
 function MenuItem({ item, level = 0 }) {
-  const [expanded, setExpanded] = useState(false)
   const location = useLocation()
   const { sidebarCollapsed } = useAppStore()
 
   const isActive = item.path && location.pathname === item.path
   const hasActiveChild = item.children?.some((child) => location.pathname === child.path)
+
+  const [expanded, setExpanded] = useState(() => Boolean(hasActiveChild))
+
+  useEffect(() => {
+    if (hasActiveChild) setExpanded(true)
+  }, [hasActiveChild])
 
   const Icon = item.icon
 

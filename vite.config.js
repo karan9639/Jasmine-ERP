@@ -8,7 +8,4 @@ export default defineConfig({
       "@": "/src",
     },
   },
-  css: {
-    postcss: "./postcss.config.mjs",
-  },
 })

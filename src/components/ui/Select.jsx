@@ -1,9 +1,20 @@
 import { cn } from "@/lib/utils"
 import { forwardRef } from "react"
 import { ChevronDown } from "lucide-react"
+import { Label } from "@/components/ui/Label"
 
-export const Select = forwardRef(({ className, children, ...props }, ref) => {
-  return (
+export const Select = forwardRef(({ className, children, label, required, options, ...props }, ref) => {
+  const optionNodes =
+    children ??
+    (Array.isArray(options)
+      ? options.map((o) => (
+          <option key={String(o.value)} value={o.value}>
+            {o.label}
+          </option>
+        ))
+      : null)
+
+  const control = (
     <div className="relative">
       <select
         className={cn(
@@ -11,11 +22,21 @@ export const Select = forwardRef(({ className, children, ...props }, ref) => {
           className,
         )}
         ref={ref}
+        required={required}
         {...props}
       >
-        {children}
+        {optionNodes}
       </select>
       <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+    </div>
+  )
+
+  if (!label) return control
+
+  return (
+    <div className="space-y-1">
+      <Label required={required}>{label}</Label>
+      {control}
     </div>
   )
 })

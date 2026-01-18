@@ -4,6 +4,7 @@ import { Save, Undo, Search, Play, Trash2, Printer, Plus } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 
 export function ActionBar({
+  actions,
   onNew,
   onSave,
   onUndo,
@@ -19,6 +20,38 @@ export function ActionBar({
   disableDelete,
   disablePrint,
 }) {
+  // Compatibility: some screens pass a dynamic `actions` array.
+  // Format: { label, icon: IconComponent, onClick, variant }
+  if (Array.isArray(actions) && actions.length) {
+    const normalizeVariant = (v) => {
+      // Button supports: primary, secondary, accent, destructive, outline, ghost
+      if (!v) return "secondary"
+      if (v === "default") return "secondary"
+      return v
+    }
+
+    return (
+      <div className="flex items-center gap-2 p-3 bg-card border border-border rounded-lg mb-4">
+        {actions.map((a, idx) => {
+          const Icon = a.icon
+          return (
+            <Button
+              key={idx}
+              onClick={a.onClick}
+              variant={normalizeVariant(a.variant)}
+              size="sm"
+              title={a.label}
+              disabled={a.disabled}
+            >
+              {Icon ? <Icon className="w-4 h-4" /> : null}
+              <span>{a.label}</span>
+            </Button>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-2 p-3 bg-card border border-border rounded-lg mb-4">
       {onNew && (

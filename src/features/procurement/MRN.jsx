@@ -16,7 +16,8 @@ import { formatDate } from "@/lib/formatters"
 
 export function MRN() {
   const { addToast } = useAppStore()
-  const [formData, setFormData] = useState({
+
+  const defaultFormData = () => ({
     mrnNo: "",
     mrnDate: formatDate(new Date(), "YYYY-MM-DD"),
     vendorId: "",
@@ -26,9 +27,18 @@ export function MRN() {
     poNo: "",
   })
 
-  const [lines, setLines] = useState([
+  const defaultLines = () => [
     { id: 1, item: "", uom: "Kgs", orderedQty: 0, receivedQty: 0, lotNo: "", mfgDate: "", rackNo: "" },
-  ])
+  ]
+
+  const [formData, setFormData] = useState(defaultFormData())
+  const [lines, setLines] = useState(defaultLines())
+
+  const handleNew = () => {
+    setFormData(defaultFormData())
+    setLines(defaultLines())
+    addToast({ type: "info", message: "New MRN" })
+  }
 
   const handleSave = () => {
     addToast({ type: "success", message: "MRN saved successfully" })
@@ -145,7 +155,7 @@ export function MRN() {
 
   return (
     <PageShell title="Material Receipt Note (MRN)">
-      <ActionBar onNew={() => {}} onSave={handleSave} onPrint={() => {}} />
+      <ActionBar onNew={handleNew} onSave={handleSave} onPrint={() => {}} />
 
       <Card>
         <CardContent className="p-6 space-y-6">
