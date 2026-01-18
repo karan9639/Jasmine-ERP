@@ -127,3 +127,5 @@ export function Approval({ level = 1 }) {
     </PageShell>
   )
 }
+
+export default Approval

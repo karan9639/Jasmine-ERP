@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -69,7 +68,6 @@
   --sidebar-ring: rgba(139, 92, 246, 0.5);
 }
 
-/* Fixed @theme inline configuration for Tailwind v4 */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -109,20 +107,11 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* Added base layer styles for proper element styling */
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border outline-ring/50;
   }
-
   body {
-    @apply bg-background text-foreground antialiased;
-  }
-
-  /* Ensure proper box-sizing */
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
+    @apply bg-background text-foreground;
   }
 }

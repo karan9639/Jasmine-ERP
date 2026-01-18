@@ -2,8 +2,8 @@ import { cn } from "@/lib/utils"
 import { Check } from "lucide-react"
 import { forwardRef } from "react"
 
-export const Checkbox = forwardRef(({ className, checked, ...props }, ref) => {
-  return (
+export const Checkbox = forwardRef(({ className, checked, label, ...props }, ref) => {
+  const checkboxElement = (
     <div className="relative inline-flex">
       <input
         type="checkbox"
@@ -20,6 +20,19 @@ export const Checkbox = forwardRef(({ className, checked, ...props }, ref) => {
       )}
     </div>
   )
+
+  if (label) {
+    return (
+      <label className="flex items-center gap-2 cursor-pointer">
+        {checkboxElement}
+        <span className="text-sm">{label}</span>
+      </label>
+    )
+  }
+
+  return checkboxElement
 })
 
 Checkbox.displayName = "Checkbox"
+
+export default Checkbox

@@ -1,197 +1,277 @@
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from "react-router-dom"
-import { MainLayout } from "@/components/layout/MainLayout"
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom"
 import { ToastContainer } from "@/components/ui/Toast"
 import { useAppStore } from "@/state/useAppStore"
+import { Suspense, lazy } from "react"
 
-// Auth
+// Layout
+import { MainLayout } from "@/components/layout/MainLayout"
+
+// Auth pages (eager load)
 import { Login } from "@/features/auth/Login"
 import { CompanySelection } from "@/features/company/CompanySelection"
 
-// Dashboard
+// Dashboard (eager load)
 import { Dashboard } from "@/features/dashboard/Dashboard"
 
+// Lazy load all feature modules
 // Order Processing
-import { Order } from "@/features/orderProcessing/Order"
-import { Approval } from "@/features/orderProcessing/Approval"
+const Order = lazy(() => import("@/features/orderProcessing/Order"))
+const Approval = lazy(() => import("@/features/orderProcessing/Approval"))
 
 // Procurement
-import { Indent } from "@/features/procurement/Indent"
-import { PurchaseOrder } from "@/features/procurement/PurchaseOrder"
-import { MRN } from "@/features/procurement/MRN"
-
-// Production
-import { WarpingEntry } from "@/features/production/WarpingEntry"
-import { KnittingEntry } from "@/features/production/KnittingEntry"
-
-// Dyeing
-import { DyeingSchedule } from "@/features/dyeing/Schedule"
-import { DyeingJobcard } from "@/features/dyeing/Jobcard"
-
-// Lamination
-import { LaminationSchedule } from "@/features/lamination/Schedule"
-import { LaminationSlip } from "@/features/lamination/Slip"
-import { LaminationStock } from "@/features/lamination/Stock"
+const Indent = lazy(() => import("@/features/procurement/Indent"))
+const PurchaseOrder = lazy(() => import("@/features/procurement/PurchaseOrder"))
+const MRN = lazy(() => import("@/features/procurement/MRN"))
+const IndentStatus = lazy(() => import("@/features/procurement/IndentStatus"))
+const SupplyStatus = lazy(() => import("@/features/procurement/SupplyStatus"))
+const MRNRegister = lazy(() => import("@/features/procurement/MRNRegister"))
+const PurchaseRegister = lazy(() => import("@/features/procurement/PurchaseRegister"))
 
 // Inventory
-import { IssueInventory } from "@/features/inventory/IssueInventory"
+const IssueInventory = lazy(() => import("@/features/inventory/IssueInventory"))
+const IssueInventoryItem = lazy(() => import("@/features/inventory/IssueInventoryItem"))
+
+// Production
+const WarpingEntry = lazy(() => import("@/features/production/WarpingEntry"))
+const KnittingEntry = lazy(() => import("@/features/production/KnittingEntry"))
+
+// Dyeing
+const DyeingSchedule = lazy(() => import("@/features/dyeing/Schedule"))
+const DyeingJobcard = lazy(() => import("@/features/dyeing/Jobcard"))
+
+// Lamination
+const LaminationSchedule = lazy(() => import("@/features/lamination/Schedule"))
+const LaminationSlip = lazy(() => import("@/features/lamination/Slip"))
+const LaminationStock = lazy(() => import("@/features/lamination/Stock"))
 
 // Stock
-import { OpeningGreige } from "@/features/stock/OpeningGreige"
+const OpeningGreige = lazy(() => import("@/features/stock/OpeningGreige"))
+const FinishStock = lazy(() => import("@/features/stock/FinishStock"))
 
 // Shipping
-import { Challan } from "@/features/shipping/Challan"
-import { Invoice } from "@/features/shipping/Invoice"
+const Challan = lazy(() => import("@/features/shipping/Challan"))
+const Invoice = lazy(() => import("@/features/shipping/Invoice"))
 
 // Quality
-import InspectionEntry from "@/features/quality/InspectionEntry"
-import TestReport from "@/features/quality/TestReport"
+const InspectionEntry = lazy(() => import("@/features/quality/InspectionEntry"))
+const TestReport = lazy(() => import("@/features/quality/TestReport"))
 
 // Master Data
-import Company from "@/features/masterData/Company"
-import Customer from "@/features/masterData/Customer"
-import Vendor from "@/features/masterData/Vendor"
-import Item from "@/features/masterData/Item"
+const Company = lazy(() => import("@/features/masterData/Company"))
+const Customer = lazy(() => import("@/features/masterData/Customer"))
+const Vendor = lazy(() => import("@/features/masterData/Vendor"))
+const Item = lazy(() => import("@/features/masterData/Item"))
+const Employee = lazy(() => import("@/features/masterData/Employee"))
+const Brand = lazy(() => import("@/features/masterData/Brand"))
+const Taxation = lazy(() => import("@/features/masterData/Taxation"))
+const NPD = lazy(() => import("@/features/masterData/NPD"))
+const BOM = lazy(() => import("@/features/masterData/BOM"))
+const PriceMaster = lazy(() => import("@/features/masterData/PriceMaster"))
 
 // Reports
-import StockReport from "@/features/reports/StockReport"
-import OrderPendencyReport from "@/features/reports/OrderPendencyReport"
-import ProductionReport from "@/features/reports/ProductionReport"
-import SalesReport from "@/features/reports/SalesReport"
+const StockReport = lazy(() => import("@/features/reports/StockReport"))
+const OrderPendencyReport = lazy(() => import("@/features/reports/OrderPendencyReport"))
+const ProductionReport = lazy(() => import("@/features/reports/ProductionReport"))
+const SalesReport = lazy(() => import("@/features/reports/SalesReport"))
 
-function Placeholder({ title }) {
+// Utility
+const ChangePassword = lazy(() => import("@/features/utility/ChangePassword"))
+const LoginUnit = lazy(() => import("@/features/utility/LoginUnit"))
+
+// Loading component
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center h-64">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    </div>
+  )
+}
+
+// Not Found component
+function NotFound() {
   return (
     <div className="p-6">
       <div className="rounded-2xl border border-border bg-card p-12 text-center">
-        <h2 className="mb-2 text-2xl font-semibold">{title}</h2>
-        <p className="text-muted-foreground">This module is under development</p>
+        <h2 className="text-6xl font-bold mb-4 text-primary">404</h2>
+        <h3 className="text-2xl font-semibold mb-2">Page Not Found</h3>
+        <p className="text-muted-foreground mb-6">The page you are looking for does not exist or has been moved.</p>
+        <a href="/" className="inline-flex items-center justify-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90">
+          Go to Dashboard
+        </a>
       </div>
     </div>
   )
 }
 
-function PublicOnly({ children }) {
-  const { user } = useAppStore()
-  if (user) return <Navigate to="/" replace />
-  return children
-}
-
+// Protected route wrapper
 function ProtectedRoute() {
   const { user } = useAppStore()
-  const location = useLocation()
-  if (!user) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />
-  }
-  return <Outlet />
-}
-
-function RequireCompanySelection() {
-  const { unit, financialYear } = useAppStore()
-  const location = useLocation()
-
-  // If unit/FY isn't selected yet, force the selection screen (but don't loop).
-  if ((!unit || !financialYear) && location.pathname !== "/company-selection") {
-    return <Navigate to="/company-selection" replace state={{ from: location.pathname }} />
-  }
-  return <Outlet />
-}
-
-function AppRoutes() {
+  if (!user) return <Navigate to="/login" replace />
   return (
-    <Routes>
-      <Route
-        path="/login"
-        element={
-          <PublicOnly>
-            <Login />
-          </PublicOnly>
-        }
-      />
-
-      <Route element={<ProtectedRoute />}>
-        <Route path="/company-selection" element={<CompanySelection />} />
-
-        <Route element={<RequireCompanySelection />}>
-          <Route path="/" element={<MainLayout />}>
-            <Route index element={<Dashboard />} />
-
-            {/* Order Processing */}
-            <Route path="order-processing/order" element={<Order />} />
-            <Route path="order-processing/approval-1" element={<Approval level={1} />} />
-            <Route path="order-processing/approval-2" element={<Approval level={2} />} />
-            <Route path="order-processing/reports/order-pendency" element={<OrderPendencyReport />} />
-
-            {/* Procurement */}
-            <Route path="procurement/indent" element={<Indent />} />
-            <Route path="procurement/purchase-order" element={<PurchaseOrder />} />
-            <Route path="procurement/mrn" element={<MRN />} />
-            <Route path="procurement/reports/*" element={<Placeholder title="Procurement Reports" />} />
-
-            {/* Inventory */}
-            <Route path="inventory/issue-inventory" element={<IssueInventory />} />
-            <Route path="inventory/*" element={<Placeholder title="Inventory Module" />} />
-
-            {/* Production */}
-            <Route path="production/warping-entry" element={<WarpingEntry />} />
-            <Route path="production/knitting-entry" element={<KnittingEntry />} />
-            <Route path="production/*" element={<Placeholder title="Production Module" />} />
-
-            {/* Dyeing */}
-            <Route path="dyeing/schedule" element={<DyeingSchedule />} />
-            <Route path="dyeing/jobcard" element={<DyeingJobcard />} />
-            <Route path="dyeing/*" element={<Placeholder title="Dyeing Module" />} />
-
-            {/* Lamination */}
-            <Route path="lamination/schedule" element={<LaminationSchedule />} />
-            <Route path="lamination/slip" element={<LaminationSlip />} />
-            <Route path="lamination/stock" element={<LaminationStock />} />
-            <Route path="lamination/*" element={<Placeholder title="Lamination Module" />} />
-
-            {/* Stock */}
-            <Route path="stock/opening-greige" element={<OpeningGreige />} />
-            <Route path="stock/*" element={<Placeholder title="Stock Module" />} />
-            <Route path="sku-finish-stock" element={<Placeholder title="Finish Stock" />} />
-
-            {/* Shipping & Invoicing */}
-            <Route path="shipping-invoicing/challan" element={<Challan />} />
-            <Route path="shipping-invoicing/invoice" element={<Invoice />} />
-            <Route path="shipping-invoicing/*" element={<Placeholder title="Shipping & Invoicing Module" />} />
-
-            {/* Quality */}
-            <Route path="quality/inspection-entry" element={<InspectionEntry />} />
-            <Route path="quality/test-report" element={<TestReport />} />
-            <Route path="quality/*" element={<Placeholder title="Quality Module" />} />
-
-            {/* Master Data */}
-            <Route path="master-data/company" element={<Company />} />
-            <Route path="master-data/customer" element={<Customer />} />
-            <Route path="master-data/vendor" element={<Vendor />} />
-            <Route path="master-data/item" element={<Item />} />
-            <Route path="master-data/*" element={<Placeholder title="Master Data Module" />} />
-
-            {/* Reports */}
-            <Route path="reports/stock" element={<StockReport />} />
-            <Route path="reports/production" element={<ProductionReport />} />
-            <Route path="reports/sales" element={<SalesReport />} />
-            <Route path="reports/*" element={<Placeholder title="Reports" />} />
-
-            {/* Utility */}
-            <Route path="utility/*" element={<Placeholder title="Utility" />} />
-
-            <Route path="*" element={<Placeholder title="Page Not Found" />} />
-          </Route>
-        </Route>
-      </Route>
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <MainLayout>
+      <Suspense fallback={<PageLoader />}>
+        <Outlet />
+      </Suspense>
+    </MainLayout>
   )
 }
 
-export default function App() {
+function App() {
   return (
     <BrowserRouter>
       <ToastContainer />
-      <AppRoutes />
+      <Routes>
+        {/* Public routes */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/company-selection" element={<CompanySelection />} />
+
+        {/* Protected routes with layout */}
+        <Route element={<ProtectedRoute />}>
+          <Route index element={<Dashboard />} />
+          
+          {/* Order Processing */}
+          <Route path="order-processing">
+            <Route path="order" element={<Order />} />
+            <Route path="approval-1" element={<Approval />} />
+            <Route path="approval-2" element={<Approval />} />
+            <Route path="reports/order-pendency" element={<OrderPendencyReport />} />
+          </Route>
+
+          {/* Procurement */}
+          <Route path="procurement">
+            <Route path="indent" element={<Indent />} />
+            <Route path="purchase-order" element={<PurchaseOrder />} />
+            <Route path="mrn" element={<MRN />} />
+            <Route path="reports/indent-status" element={<IndentStatus />} />
+            <Route path="reports/supply-status" element={<SupplyStatus />} />
+            <Route path="reports/mrn-register" element={<MRNRegister />} />
+            <Route path="reports/purchase-register" element={<PurchaseRegister />} />
+            <Route path="reports/mrn-status" element={<IndentStatus />} />
+          </Route>
+
+          {/* Inventory */}
+          <Route path="inventory">
+            <Route path="issue-inventory" element={<IssueInventory />} />
+            <Route path="issue-inventory-item" element={<IssueInventoryItem />} />
+            <Route path="reports/issue-inventory-stock" element={<StockReport />} />
+            <Route path="reports/inventory-stock-analysis" element={<StockReport />} />
+          </Route>
+
+          {/* Production */}
+          <Route path="production">
+            <Route path="warping-jobcard" element={<WarpingEntry />} />
+            <Route path="warping-entry" element={<WarpingEntry />} />
+            <Route path="knitting-jobcard" element={<KnittingEntry />} />
+            <Route path="knitting-entry" element={<KnittingEntry />} />
+            <Route path="reports/daily-production" element={<ProductionReport />} />
+            <Route path="reports/yarn-requirement" element={<ProductionReport />} />
+            <Route path="reports/material-forecasting" element={<ProductionReport />} />
+          </Route>
+
+          {/* Dyeing */}
+          <Route path="dyeing">
+            <Route path="schedule" element={<DyeingSchedule />} />
+            <Route path="inventory-system" element={<IssueInventory />} />
+            <Route path="jobcard" element={<DyeingJobcard />} />
+            <Route path="jobcard-approval" element={<DyeingJobcard />} />
+            <Route path="color-chemical-request" element={<DyeingSchedule />} />
+            <Route path="jobwork" element={<DyeingJobcard />} />
+            <Route path="receipts-mrn" element={<MRN />} />
+            <Route path="slip" element={<LaminationSlip />} />
+            <Route path="internal-challan" element={<Challan />} />
+            <Route path="stock" element={<StockReport />} />
+            <Route path="apc-status" element={<DyeingSchedule />} />
+            <Route path="weighing-color-issue" element={<IssueInventory />} />
+            <Route path="stenter-feeding" element={<DyeingSchedule />} />
+            <Route path="reports/jobcard-reports" element={<ProductionReport />} />
+            <Route path="reports/outstanding-orders" element={<OrderPendencyReport />} />
+            <Route path="reports/internal-challan-report" element={<SalesReport />} />
+          </Route>
+
+          {/* Lamination */}
+          <Route path="lamination">
+            <Route path="schedule" element={<LaminationSchedule />} />
+            <Route path="slip" element={<LaminationSlip />} />
+            <Route path="stock" element={<LaminationStock />} />
+            <Route path="reports/lamination-reports" element={<ProductionReport />} />
+            <Route path="reports/jobcard-report" element={<ProductionReport />} />
+            <Route path="reports/outstanding-schedules" element={<OrderPendencyReport />} />
+          </Route>
+
+          {/* Finish Stock */}
+          <Route path="sku-finish-stock" element={<FinishStock />} />
+
+          {/* Stock */}
+          <Route path="stock">
+            <Route path="opening-greige" element={<OpeningGreige />} />
+            <Route path="mrn" element={<MRN />} />
+            <Route path="issue" element={<IssueInventory />} />
+            <Route path="greige-issue" element={<IssueInventory />} />
+            <Route path="reports/stock-ledger" element={<StockReport />} />
+          </Route>
+
+          {/* Shipping & Invoicing */}
+          <Route path="shipping-invoicing">
+            <Route path="issue-challan" element={<Challan />} />
+            <Route path="jobwork-challan" element={<Challan />} />
+            <Route path="challan" element={<Challan />} />
+            <Route path="invoice" element={<Invoice />} />
+            <Route path="invoice-receipt-reconcile" element={<Invoice />} />
+            <Route path="reports/despatch-detail" element={<SalesReport />} />
+            <Route path="reports/goods-vehicle-out-gate-pass" element={<SalesReport />} />
+          </Route>
+
+          {/* Quality */}
+          <Route path="quality">
+            <Route path="inspection-entry" element={<InspectionEntry />} />
+            <Route path="test-report" element={<TestReport />} />
+            <Route path="checking" element={<InspectionEntry />} />
+            <Route path="check" element={<InspectionEntry />} />
+            <Route path="reports/daily-quality" element={<TestReport />} />
+            <Route path="reports/quality" element={<TestReport />} />
+          </Route>
+
+          {/* Master Data */}
+          <Route path="master-data">
+            <Route path="company" element={<Company />} />
+            <Route path="customer" element={<Customer />} />
+            <Route path="vendor" element={<Vendor />} />
+            <Route path="item" element={<Item />} />
+            <Route path="employee" element={<Employee />} />
+            <Route path="brand" element={<Brand />} />
+            <Route path="taxation" element={<Taxation />} />
+            <Route path="sfl-texnet-mapping" element={<Item />} />
+            <Route path="npd" element={<NPD />} />
+            <Route path="bom" element={<BOM />} />
+            <Route path="inventory-item" element={<Item />} />
+            <Route path="item-description" element={<Item />} />
+            <Route path="price-master" element={<PriceMaster />} />
+            <Route path="reports/price" element={<SalesReport />} />
+          </Route>
+
+          {/* Reports */}
+          <Route path="reports">
+            <Route path="stock" element={<StockReport />} />
+            <Route path="production" element={<ProductionReport />} />
+            <Route path="sales" element={<SalesReport />} />
+            <Route path="production-detail" element={<ProductionReport />} />
+            <Route path="despatches-on-challan" element={<SalesReport />} />
+            <Route path="dyed-but-djc-open" element={<ProductionReport />} />
+            <Route path="lamination-production" element={<ProductionReport />} />
+          </Route>
+
+          {/* Utility */}
+          <Route path="utility">
+            <Route path="login-unit" element={<LoginUnit />} />
+            <Route path="change-password" element={<ChangePassword />} />
+          </Route>
+
+          {/* Catch-all for 404 */}
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
     </BrowserRouter>
   )
 }
+
+export default App

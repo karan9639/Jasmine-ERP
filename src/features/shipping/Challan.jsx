@@ -17,8 +17,7 @@ import { formatDate, formatMoney } from "@/lib/formatters"
 
 export function Challan() {
   const { addToast } = useAppStore()
-
-  const defaultFormData = () => ({
+  const [formData, setFormData] = useState({
     series: "CH",
     challanNo: "",
     challanDate: formatDate(new Date(), "YYYY-MM-DD"),
@@ -33,18 +32,9 @@ export function Challan() {
     remarks: "",
   })
 
-  const defaultLines = () => [
+  const [lines, setLines] = useState([
     { id: 1, label: "", product: "", gsm: "", width: "", color: "", qty: 0, qtyKgs: 0, rate: 0, amount: 0 },
-  ]
-
-  const [formData, setFormData] = useState(defaultFormData())
-  const [lines, setLines] = useState(defaultLines())
-
-  const handleNew = () => {
-    setFormData(defaultFormData())
-    setLines(defaultLines())
-    addToast({ type: "info", message: "New challan" })
-  }
+  ])
 
   const handleSave = () => {
     addToast({ type: "success", message: "Challan saved successfully" })
@@ -216,7 +206,7 @@ export function Challan() {
         </Button>
       }
     >
-      <ActionBar onNew={handleNew} onSave={handleSave} onPrint={() => {}} />
+      <ActionBar onNew={() => {}} onSave={handleSave} onPrint={() => {}} />
 
       <Card>
         <CardContent className="p-6 space-y-6">
@@ -349,3 +339,5 @@ export function Challan() {
     </PageShell>
   )
 }
+
+export default Challan

@@ -1,17 +1,19 @@
-"use client"
+'use client';
 
 import { useState } from "react"
 import { Search, Download, Printer, FileSpreadsheet } from "lucide-react"
-import PageShell from "../../components/layout/PageShell"
-import ActionBar from "../../components/layout/ActionBar"
-import Card from "../../components/ui/Card"
-import Input from "../../components/ui/Input"
-import Select from "../../components/ui/Select"
-import DataTable from "../../components/ui/DataTable"
-import { exportToCSV, exportToExcel, printTable } from "../../lib/exportUtils"
-import { formatDate, formatCurrency } from "../../lib/formatters"
+import { PageShell } from "@/components/layout/PageShell"
+import { ActionBar } from "@/components/layout/ActionBar"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card"
+import { Input } from "@/components/ui/Input"
+import { Select } from "@/components/ui/Select"
+import { DataTable } from "@/components/ui/Table"
+import { exportToCSV, exportToExcel, printTable } from "@/utils/exportUtils"
+import { formatDate, formatCurrency } from "@/lib/formatters"
+import { useAppStore } from "@/state/useAppStore"
 
-export default function SalesReport() {
+export function SalesReport() {
+  const { addToast } = useAppStore()
   const [filters, setFilters] = useState({
     customerName: "",
     fromDate: "",
@@ -51,46 +53,54 @@ export default function SalesReport() {
   ])
 
   const columns = [
-    { key: "invoiceNo", header: "Invoice No", sortable: true },
-    { key: "invoiceDate", header: "Date", sortable: true, cell: (row) => formatDate(row.invoiceDate) },
-    { key: "customerName", header: "Customer", sortable: true },
-    { key: "itemCode", header: "Item Code", sortable: true },
-    { key: "itemName", header: "Item Name", sortable: true },
-    { key: "quantity", header: "Quantity", sortable: true, align: "right" },
-    { key: "rate", header: "Rate", sortable: true, align: "right", cell: (row) => formatCurrency(row.rate) },
-    { key: "amount", header: "Amount", sortable: true, align: "right", cell: (row) => formatCurrency(row.amount) },
-    { key: "cgst", header: "CGST", sortable: true, align: "right", cell: (row) => formatCurrency(row.cgst) },
-    { key: "sgst", header: "SGST", sortable: true, align: "right", cell: (row) => formatCurrency(row.sgst) },
-    {
-      key: "totalAmount",
-      header: "Total",
-      sortable: true,
-      align: "right",
-      cell: (row) => formatCurrency(row.totalAmount),
-    },
+    { accessorKey: "invoiceNo", header: "Invoice No", enableSorting: true },
+    { accessorKey: "invoiceDate", header: "Date", enableSorting: true, cell: ({ row }) => formatDate(row.original.invoiceDate) },
+    { accessorKey: "customerName", header: "Customer", enableSorting: true },
+    { accessorKey: "itemCode", header: "Item Code", enableSorting: true },
+    { accessorKey: "itemName", header: "Item Name", enableSorting: true },
+    { accessorKey: "quantity", header: "Quantity", enableSorting: true, cell: ({ row }) => <span className="text-right block">{row.original.quantity}</span> },
+    { accessorKey: "rate", header: "Rate", enableSorting: true, cell: ({ row }) => <span className="text-right block">{formatCurrency(row.original.rate)}</span> },
+    { accessorKey: "amount", header: "Amount", enableSorting: true, cell: ({ row }) => <span className="text-right block">{formatCurrency(row.original.amount)}</span> },
+    { accessorKey: "cgst", header: "CGST", enableSorting: true, cell: ({ row }) => <span className="text-right block">{formatCurrency(row.original.cgst)}</span> },
+    { accessorKey: "sgst", header: "SGST", enableSorting: true, cell: ({ row }) => <span className="text-right block">{formatCurrency(row.original.sgst)}</span> },
+    { accessorKey: "totalAmount", header: "Total", enableSorting: true, cell: ({ row }) => <span className="text-right block font-semibold">{formatCurrency(row.original.totalAmount)}</span> },
   ]
 
   const handleSearch = () => {
-    console.log("Searching with filters:", filters)
+    addToast({ type: "info", message: "Report refreshed" })
   }
 
   const handleExportCSV = () => {
+    if (reportData.length === 0) {
+      addToast({ type: "warning", message: "No data to export" })
+      return
+    }
     exportToCSV(reportData, `sales-report-${formatDate(new Date())}.csv`)
+    addToast({ type: "success", message: "CSV exported successfully" })
   }
 
   const handleExportExcel = () => {
+    if (reportData.length === 0) {
+      addToast({ type: "warning", message: "No data to export" })
+      return
+    }
     exportToExcel(reportData, `sales-report-${formatDate(new Date())}.xlsx`, "Sales Report")
+    addToast({ type: "success", message: "Excel exported successfully" })
   }
 
   const handlePrint = () => {
+    if (reportData.length === 0) {
+      addToast({ type: "warning", message: "No data to print" })
+      return
+    }
     printTable("Sales Report", reportData, columns)
   }
 
   const actions = [
     { label: "Search", icon: Search, onClick: handleSearch, variant: "primary" },
-    { label: "CSV", icon: Download, onClick: handleExportCSV, variant: "default" },
-    { label: "Excel", icon: FileSpreadsheet, onClick: handleExportExcel, variant: "default" },
-    { label: "Print", icon: Printer, onClick: handlePrint, variant: "default" },
+    { label: "CSV", icon: Download, onClick: handleExportCSV },
+    { label: "Excel", icon: FileSpreadsheet, onClick: handleExportExcel },
+    { label: "Print", icon: Printer, onClick: handlePrint },
   ]
 
   const totals = reportData.reduce(
@@ -110,10 +120,10 @@ export default function SalesReport() {
 
       <div className="space-y-6">
         <Card>
-          <Card.Header>
-            <Card.Title>Filters</Card.Title>
-          </Card.Header>
-          <Card.Content>
+          <CardHeader>
+            <CardTitle>Filters</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Input
                 label="Customer Name"
@@ -144,25 +154,42 @@ export default function SalesReport() {
                 ]}
               />
             </div>
-          </Card.Content>
+          </CardContent>
         </Card>
 
         <Card>
-          <Card.Content>
+          <CardContent className="pt-6">
             <DataTable data={reportData} columns={columns} />
 
             <div className="mt-4 pt-4 border-t border-border">
-              <div className="grid grid-cols-5 gap-4 text-sm font-semibold">
-                <div className="text-right">Total Qty: {totals.quantity.toFixed(2)}</div>
-                <div className="text-right">Total Amount: {formatCurrency(totals.amount)}</div>
-                <div className="text-right">Total CGST: {formatCurrency(totals.cgst)}</div>
-                <div className="text-right">Total SGST: {formatCurrency(totals.sgst)}</div>
-                <div className="text-right">Grand Total: {formatCurrency(totals.totalAmount)}</div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="text-muted-foreground">Total Qty</div>
+                  <div className="font-semibold">{totals.quantity.toFixed(2)}</div>
+                </div>
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="text-muted-foreground">Total Amount</div>
+                  <div className="font-semibold">{formatCurrency(totals.amount)}</div>
+                </div>
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="text-muted-foreground">Total CGST</div>
+                  <div className="font-semibold">{formatCurrency(totals.cgst)}</div>
+                </div>
+                <div className="p-3 bg-muted rounded-lg">
+                  <div className="text-muted-foreground">Total SGST</div>
+                  <div className="font-semibold">{formatCurrency(totals.sgst)}</div>
+                </div>
+                <div className="p-3 bg-primary/10 rounded-lg">
+                  <div className="text-primary">Grand Total</div>
+                  <div className="font-semibold">{formatCurrency(totals.totalAmount)}</div>
+                </div>
               </div>
             </div>
-          </Card.Content>
+          </CardContent>
         </Card>
       </div>
     </PageShell>
   )
 }
+
+export default SalesReport

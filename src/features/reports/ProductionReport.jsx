@@ -1,17 +1,20 @@
-"use client"
+'use client';
 
 import { useState } from "react"
 import { Search, Download, Printer, FileSpreadsheet } from "lucide-react"
-import PageShell from "../../components/layout/PageShell"
-import ActionBar from "../../components/layout/ActionBar"
-import Card from "../../components/ui/Card"
-import Input from "../../components/ui/Input"
-import Select from "../../components/ui/Select"
-import DataTable from "../../components/ui/DataTable"
-import { exportToCSV, exportToExcel, printTable } from "../../lib/exportUtils"
-import { formatDate } from "../../lib/formatters"
+import { PageShell } from "@/components/layout/PageShell"
+import { ActionBar } from "@/components/layout/ActionBar"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
+import { Input } from "@/components/ui/Input"
+import { Select } from "@/components/ui/Select"
+import { DataTable } from "@/components/ui/Table"
+import { exportToCSV, exportToExcel, printTable } from "@/utils/exportUtils"
+import { formatDate, formatMoney } from "@/lib/formatters"
+import { useAppStore } from "@/state/useAppStore"
 
-export default function ProductionReport() {
+export function ProductionReport() {
+  const { addToast } = useAppStore()
+  const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState({
     processType: "",
     fromDate: "",
@@ -53,41 +56,55 @@ export default function ProductionReport() {
   ])
 
   const columns = [
-    { key: "date", header: "Date", sortable: true, cell: (row) => formatDate(row.date) },
-    { key: "processType", header: "Process", sortable: true },
-    { key: "machineNo", header: "Machine", sortable: true },
-    { key: "operatorName", header: "Operator", sortable: true },
-    { key: "itemCode", header: "Item Code", sortable: true },
-    { key: "itemName", header: "Item Name", sortable: true },
-    { key: "lotNo", header: "Lot No", sortable: true },
-    { key: "targetQty", header: "Target", sortable: true, align: "right" },
-    { key: "actualQty", header: "Actual", sortable: true, align: "right" },
-    { key: "rejectedQty", header: "Rejected", sortable: true, align: "right" },
-    { key: "efficiency", header: "Efficiency %", sortable: true, align: "right", cell: (row) => `${row.efficiency}%` },
-    { key: "shift", header: "Shift", sortable: true },
+    { accessorKey: "date", header: "Date", enableSorting: true, cell: ({ row }) => formatDate(row.original.date) },
+    { accessorKey: "processType", header: "Process", enableSorting: true },
+    { accessorKey: "machineNo", header: "Machine", enableSorting: true },
+    { accessorKey: "operatorName", header: "Operator", enableSorting: true },
+    { accessorKey: "itemCode", header: "Item Code", enableSorting: true },
+    { accessorKey: "itemName", header: "Item Name", enableSorting: true },
+    { accessorKey: "lotNo", header: "Lot No", enableSorting: true },
+    { accessorKey: "targetQty", header: "Target", enableSorting: true, cell: ({ row }) => <span className="text-right block">{row.original.targetQty}</span> },
+    { accessorKey: "actualQty", header: "Actual", enableSorting: true, cell: ({ row }) => <span className="text-right block text-green-600">{row.original.actualQty}</span> },
+    { accessorKey: "rejectedQty", header: "Rejected", enableSorting: true, cell: ({ row }) => <span className="text-right block text-red-600">{row.original.rejectedQty}</span> },
+    { accessorKey: "efficiency", header: "Efficiency %", enableSorting: true, cell: ({ row }) => <span className={`text-right block font-semibold ${row.original.efficiency >= 95 ? "text-green-600" : row.original.efficiency >= 85 ? "text-yellow-600" : "text-red-600"}`}>{row.original.efficiency}%</span> },
+    { accessorKey: "shift", header: "Shift", enableSorting: true },
   ]
 
   const handleSearch = () => {
-    console.log("Searching with filters:", filters)
+    addToast({ type: "info", message: "Report refreshed" })
   }
 
   const handleExportCSV = () => {
-    exportToCSV(reportData, `production-report-${formatDate(new Date())}.csv`)
+    if (reportData.length === 0) {
+      addToast({ type: "warning", message: "No data to export" })
+      return
+    }
+    exportToCSV(reportData, `production-report-${formatDate(new Date(), "YYYY-MM-DD")}.csv`)
+    addToast({ type: "success", message: "CSV exported successfully" })
   }
 
   const handleExportExcel = () => {
-    exportToExcel(reportData, `production-report-${formatDate(new Date())}.xlsx`, "Production Report")
+    if (reportData.length === 0) {
+      addToast({ type: "warning", message: "No data to export" })
+      return
+    }
+    exportToExcel(reportData, `production-report-${formatDate(new Date(), "YYYY-MM-DD")}.xlsx`, "Production Report")
+    addToast({ type: "success", message: "Excel exported successfully" })
   }
 
   const handlePrint = () => {
+    if (reportData.length === 0) {
+      addToast({ type: "warning", message: "No data to print" })
+      return
+    }
     printTable("Production Report", reportData, columns)
   }
 
   const actions = [
     { label: "Search", icon: Search, onClick: handleSearch, variant: "primary" },
-    { label: "CSV", icon: Download, onClick: handleExportCSV, variant: "default" },
-    { label: "Excel", icon: FileSpreadsheet, onClick: handleExportExcel, variant: "default" },
-    { label: "Print", icon: Printer, onClick: handlePrint, variant: "default" },
+    { label: "CSV", icon: Download, onClick: handleExportCSV },
+    { label: "Excel", icon: FileSpreadsheet, onClick: handleExportExcel },
+    { label: "Print", icon: Printer, onClick: handlePrint },
   ]
 
   const totals = reportData.reduce(
@@ -96,7 +113,7 @@ export default function ProductionReport() {
       actualQty: acc.actualQty + row.actualQty,
       rejectedQty: acc.rejectedQty + row.rejectedQty,
     }),
-    { targetQty: 0, actualQty: 0, rejectedQty: 0 },
+    { targetQty: 0, actualQty: 0, rejectedQty: 0 }
   )
 
   const avgEfficiency =
@@ -110,10 +127,10 @@ export default function ProductionReport() {
 
       <div className="space-y-6">
         <Card>
-          <Card.Header>
-            <Card.Title>Filters</Card.Title>
-          </Card.Header>
-          <Card.Content>
+          <CardHeader>
+            <CardTitle>Filters</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Select
                 label="Process Type"
@@ -150,24 +167,48 @@ export default function ProductionReport() {
                 ]}
               />
             </div>
-          </Card.Content>
+          </CardContent>
         </Card>
 
         <Card>
-          <Card.Content>
-            <DataTable data={reportData} columns={columns} />
-
-            <div className="mt-4 pt-4 border-t border-border">
-              <div className="grid grid-cols-4 gap-4 text-sm font-semibold">
-                <div className="text-right">Total Target: {totals.targetQty.toFixed(2)}</div>
-                <div className="text-right">Total Actual: {totals.actualQty.toFixed(2)}</div>
-                <div className="text-right">Total Rejected: {totals.rejectedQty.toFixed(2)}</div>
-                <div className="text-right">Avg Efficiency: {avgEfficiency}%</div>
+          <CardContent className="pt-6">
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            </div>
-          </Card.Content>
+            ) : (
+              <>
+                <DataTable columns={columns} data={reportData} />
+
+                {reportData.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="p-3 bg-muted rounded-lg">
+                        <div className="text-muted-foreground">Total Target</div>
+                        <div className="font-semibold">{totals.targetQty.toFixed(2)}</div>
+                      </div>
+                      <div className="p-3 bg-green-50 rounded-lg">
+                        <div className="text-green-600">Total Actual</div>
+                        <div className="font-semibold text-green-700">{totals.actualQty.toFixed(2)}</div>
+                      </div>
+                      <div className="p-3 bg-red-50 rounded-lg">
+                        <div className="text-red-600">Total Rejected</div>
+                        <div className="font-semibold text-red-700">{totals.rejectedQty.toFixed(2)}</div>
+                      </div>
+                      <div className="p-3 bg-primary/10 rounded-lg">
+                        <div className="text-primary">Avg Efficiency</div>
+                        <div className="font-semibold">{avgEfficiency}%</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
         </Card>
       </div>
     </PageShell>
   )
 }
+
+export default ProductionReport

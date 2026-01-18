@@ -1,10 +1,23 @@
-"use client"
+'use client';
 
-import { Save, Undo, Search, Play, Trash2, Printer, Plus } from "lucide-react"
+import { Save, Undo, Search, Play, Trash2, Printer, Plus, Download, FileSpreadsheet, List } from "lucide-react"
 import { Button } from "@/components/ui/Button"
 
+const iconMap = {
+  Save,
+  Undo,
+  Search,
+  Play,
+  Trash2,
+  Printer,
+  Plus,
+  Download,
+  FileSpreadsheet,
+  List,
+}
+
 export function ActionBar({
-  actions,
+  // Legacy props (individual handlers)
   onNew,
   onSave,
   onUndo,
@@ -19,32 +32,26 @@ export function ActionBar({
   disableExecute,
   disableDelete,
   disablePrint,
+  // New props (actions array)
+  actions,
 }) {
-  // Compatibility: some screens pass a dynamic `actions` array.
-  // Format: { label, icon: IconComponent, onClick, variant }
-  if (Array.isArray(actions) && actions.length) {
-    const normalizeVariant = (v) => {
-      // Button supports: primary, secondary, accent, destructive, outline, ghost
-      if (!v) return "secondary"
-      if (v === "default") return "secondary"
-      return v
-    }
-
+  // If actions array is provided, render from that
+  if (actions && actions.length > 0) {
     return (
       <div className="flex items-center gap-2 p-3 bg-card border border-border rounded-lg mb-4">
-        {actions.map((a, idx) => {
-          const Icon = a.icon
+        {actions.map((action, idx) => {
+          const Icon = typeof action.icon === "string" ? iconMap[action.icon] : action.icon
           return (
             <Button
               key={idx}
-              onClick={a.onClick}
-              variant={normalizeVariant(a.variant)}
+              onClick={action.onClick}
+              disabled={action.disabled}
+              variant={action.variant === "primary" ? "primary" : action.variant === "destructive" ? "destructive" : "secondary"}
               size="sm"
-              title={a.label}
-              disabled={a.disabled}
+              title={action.title || action.label}
             >
-              {Icon ? <Icon className="w-4 h-4" /> : null}
-              <span>{a.label}</span>
+              {Icon && <Icon className="w-4 h-4" />}
+              <span>{action.label}</span>
             </Button>
           )
         })}
@@ -52,6 +59,7 @@ export function ActionBar({
     )
   }
 
+  // Legacy render from individual props
   return (
     <div className="flex items-center gap-2 p-3 bg-card border border-border rounded-lg mb-4">
       {onNew && (

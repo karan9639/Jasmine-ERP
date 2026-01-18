@@ -1,18 +1,18 @@
-"use client"
+'use client';
 
 import { useState } from "react"
 import { Search, Download, Printer, FileSpreadsheet } from "lucide-react"
-import { PageShell } from "../../components/layout/PageShell"
-import { ActionBar } from "../../components/layout/ActionBar"
-import { Card } from "../../components/ui/Card"
-import { Input } from "../../components/ui/Input"
-import { Select } from "../../components/ui/Select"
-import { Badge } from "../../components/ui/Badge"
-import { DataTable } from "../../components/ui/DataTable"
-import { exportToCSV, exportToExcel, printTable } from "../../lib/exportUtils"
-import { formatDate, formatCurrency } from "../../lib/formatters"
+import { PageShell } from "@/components/layout/PageShell"
+import { ActionBar } from "@/components/layout/ActionBar"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card"
+import { Input } from "@/components/ui/Input"
+import { Select } from "@/components/ui/Select"
+import { Badge } from "@/components/ui/Badge"
+import { DataTable } from "@/components/ui/DataTable"
+import { exportToCSV, exportToExcel, printTable } from "@/utils/exportUtils"
+import { formatDate, formatCurrency } from "@/lib/formatters"
 
-export default function OrderPendencyReport() {
+export function OrderPendencyReport() {
   const [filters, setFilters] = useState({
     customerName: "",
     status: "",
@@ -120,10 +120,10 @@ export default function OrderPendencyReport() {
 
       <div className="space-y-6">
         <Card>
-          <Card.Header>
-            <Card.Title>Filters</Card.Title>
-          </Card.Header>
-          <Card.Content>
+          <CardHeader>
+            <CardTitle>Filters</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Input
                 label="Customer Name"
@@ -154,11 +154,11 @@ export default function OrderPendencyReport() {
                 onChange={(e) => setFilters({ ...filters, toDate: e.target.value })}
               />
             </div>
-          </Card.Content>
+          </CardContent>
         </Card>
 
         <Card>
-          <Card.Content>
+          <CardContent>
             <DataTable data={reportData} columns={columns} />
 
             <div className="mt-4 pt-4 border-t border-border">
@@ -169,9 +169,11 @@ export default function OrderPendencyReport() {
                 <div className="text-right">Total Value: {formatCurrency(totals.pendingValue)}</div>
               </div>
             </div>
-          </Card.Content>
+          </CardContent>
         </Card>
       </div>
     </PageShell>
   )
 }
+
+export default OrderPendencyReport

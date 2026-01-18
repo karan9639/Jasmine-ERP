@@ -151,3 +151,5 @@ export function LaminationStock() {
     </PageShell>
   )
 }
+
+export default LaminationStock

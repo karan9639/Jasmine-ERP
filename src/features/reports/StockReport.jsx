@@ -1,17 +1,21 @@
-"use client"
+'use client';
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Search, Download, Printer, FileSpreadsheet } from "lucide-react"
-import PageShell from "../../components/layout/PageShell"
-import ActionBar from "../../components/layout/ActionBar"
-import Card from "../../components/ui/Card"
-import Input from "../../components/ui/Input"
-import Select from "../../components/ui/Select"
-import DataTable from "../../components/ui/DataTable"
-import { exportToCSV, exportToExcel, printTable } from "../../lib/exportUtils"
-import { formatDate, formatCurrency } from "../../lib/formatters"
+import { PageShell } from "@/components/layout/PageShell"
+import { ActionBar } from "@/components/layout/ActionBar"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
+import { Input } from "@/components/ui/Input"
+import { Select } from "@/components/ui/Select"
+import { DataTable } from "@/components/ui/Table"
+import { exportToCSV, exportToExcel, printTable } from "@/utils/exportUtils"
+import { formatDate, formatMoney } from "@/lib/formatters"
+import { useAppStore } from "@/state/useAppStore"
+import { api } from "@/services/api"
 
-export default function StockReport() {
+export function StockReport() {
+  const { addToast } = useAppStore()
+  const [loading, setLoading] = useState(false)
   const [filters, setFilters] = useState({
     itemType: "",
     category: "",
@@ -20,84 +24,115 @@ export default function StockReport() {
     warehouse: "",
   })
 
-  const [reportData, setReportData] = useState([
-    {
-      id: 1,
-      itemCode: "ITEM001",
-      itemName: "Cotton Yarn 30s",
-      itemType: "Raw Material",
-      category: "Yarn",
-      uom: "KG",
-      openingStock: 1000,
-      received: 500,
-      issued: 300,
-      closingStock: 1200,
-      rate: 250,
-      value: 300000,
-    },
-    {
-      id: 2,
-      itemCode: "ITEM002",
-      itemName: "Polyester Fabric",
-      itemType: "Finished Goods",
-      category: "Fabric",
-      uom: "MTR",
-      openingStock: 2000,
-      received: 1000,
-      issued: 800,
-      closingStock: 2200,
-      rate: 150,
-      value: 330000,
-    },
-  ])
+  const [reportData, setReportData] = useState([])
 
-  const columns = [
-    { key: "itemCode", header: "Item Code", sortable: true },
-    { key: "itemName", header: "Item Name", sortable: true },
-    { key: "itemType", header: "Type", sortable: true },
-    { key: "category", header: "Category", sortable: true },
-    { key: "uom", header: "UOM" },
-    { key: "openingStock", header: "Opening", sortable: true, align: "right" },
-    { key: "received", header: "Received", sortable: true, align: "right" },
-    { key: "issued", header: "Issued", sortable: true, align: "right" },
-    { key: "closingStock", header: "Closing", sortable: true, align: "right" },
-    { key: "rate", header: "Rate", sortable: true, align: "right", cell: (row) => formatCurrency(row.rate) },
-    { key: "value", header: "Value", sortable: true, align: "right", cell: (row) => formatCurrency(row.value) },
-  ]
+  useEffect(() => {
+    loadReport()
+  }, [])
+
+  const loadReport = async () => {
+    setLoading(true)
+    try {
+      const data = await api.stock.getAll()
+      setReportData(data)
+    } catch (error) {
+      addToast({ type: "error", message: "Failed to load stock report" })
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSearch = () => {
-    console.log("Searching with filters:", filters)
+    loadReport()
+    addToast({ type: "info", message: "Report refreshed" })
   }
 
   const handleExportCSV = () => {
-    exportToCSV(reportData, `stock-report-${formatDate(new Date())}.csv`)
+    if (reportData.length === 0) {
+      addToast({ type: "warning", message: "No data to export" })
+      return
+    }
+    exportToCSV(reportData, `stock-report-${formatDate(new Date(), "YYYY-MM-DD")}.csv`)
+    addToast({ type: "success", message: "CSV exported successfully" })
   }
 
   const handleExportExcel = () => {
-    exportToExcel(reportData, `stock-report-${formatDate(new Date())}.xlsx`, "Stock Report")
+    if (reportData.length === 0) {
+      addToast({ type: "warning", message: "No data to export" })
+      return
+    }
+    exportToExcel(reportData, `stock-report-${formatDate(new Date(), "YYYY-MM-DD")}.xlsx`, "Stock Report")
+    addToast({ type: "success", message: "Excel exported successfully" })
   }
 
   const handlePrint = () => {
+    if (reportData.length === 0) {
+      addToast({ type: "warning", message: "No data to print" })
+      return
+    }
     printTable("Stock Report", reportData, columns)
   }
 
-  const actions = [
-    { label: "Search", icon: Search, onClick: handleSearch, variant: "primary" },
-    { label: "CSV", icon: Download, onClick: handleExportCSV, variant: "default" },
-    { label: "Excel", icon: FileSpreadsheet, onClick: handleExportExcel, variant: "default" },
-    { label: "Print", icon: Printer, onClick: handlePrint, variant: "default" },
+  const columns = [
+    { accessorKey: "itemCode", header: "Item Code", enableSorting: true },
+    { accessorKey: "itemName", header: "Item Name", enableSorting: true },
+    { accessorKey: "category", header: "Category", enableSorting: true },
+    { accessorKey: "uom", header: "UOM" },
+    { 
+      accessorKey: "openingStock", 
+      header: "Opening", 
+      enableSorting: true,
+      cell: ({ row }) => <span className="text-right block">{row.original.openingStock?.toFixed(2)}</span>
+    },
+    { 
+      accessorKey: "received", 
+      header: "Received", 
+      enableSorting: true,
+      cell: ({ row }) => <span className="text-right block text-green-600">{row.original.received?.toFixed(2)}</span>
+    },
+    { 
+      accessorKey: "issued", 
+      header: "Issued", 
+      enableSorting: true,
+      cell: ({ row }) => <span className="text-right block text-red-600">{row.original.issued?.toFixed(2)}</span>
+    },
+    { 
+      accessorKey: "closingStock", 
+      header: "Closing", 
+      enableSorting: true,
+      cell: ({ row }) => <span className="text-right block font-semibold">{row.original.closingStock?.toFixed(2)}</span>
+    },
+    { 
+      accessorKey: "rate", 
+      header: "Rate", 
+      enableSorting: true,
+      cell: ({ row }) => <span className="text-right block">{formatMoney(row.original.rate)}</span>
+    },
+    { 
+      accessorKey: "value", 
+      header: "Value", 
+      enableSorting: true,
+      cell: ({ row }) => <span className="text-right block font-semibold">{formatMoney(row.original.value)}</span>
+    },
   ]
 
   const totals = reportData.reduce(
     (acc, row) => ({
-      openingStock: acc.openingStock + row.openingStock,
-      received: acc.received + row.received,
-      issued: acc.issued + row.issued,
-      closingStock: acc.closingStock + row.closingStock,
-      value: acc.value + row.value,
+      openingStock: acc.openingStock + (row.openingStock || 0),
+      received: acc.received + (row.received || 0),
+      issued: acc.issued + (row.issued || 0),
+      closingStock: acc.closingStock + (row.closingStock || 0),
+      value: acc.value + (row.value || 0),
     }),
-    { openingStock: 0, received: 0, issued: 0, closingStock: 0, value: 0 },
+    { openingStock: 0, received: 0, issued: 0, closingStock: 0, value: 0 }
   )
+
+  const actions = [
+    { label: "Search", icon: Search, onClick: handleSearch, variant: "primary" },
+    { label: "CSV", icon: Download, onClick: handleExportCSV },
+    { label: "Excel", icon: FileSpreadsheet, onClick: handleExportExcel },
+    { label: "Print", icon: Printer, onClick: handlePrint },
+  ]
 
   return (
     <PageShell title="Stock Report">
@@ -105,10 +140,10 @@ export default function StockReport() {
 
       <div className="space-y-6">
         <Card>
-          <Card.Header>
-            <Card.Title>Filters</Card.Title>
-          </Card.Header>
-          <Card.Content>
+          <CardHeader>
+            <CardTitle>Filters</CardTitle>
+          </CardHeader>
+          <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               <Select
                 label="Item Type"
@@ -150,27 +185,52 @@ export default function StockReport() {
                 ]}
               />
             </div>
-          </Card.Content>
+          </CardContent>
         </Card>
 
         <Card>
-          <Card.Content>
-            <DataTable data={reportData} columns={columns} />
-
-            <div className="mt-4 pt-4 border-t border-border">
-              <div className="grid grid-cols-5 gap-4 text-sm font-semibold">
-                <div className="col-span-5 md:col-span-1 text-right md:col-start-2">
-                  Total Opening: {totals.openingStock.toFixed(2)}
-                </div>
-                <div className="text-right">Total Received: {totals.received.toFixed(2)}</div>
-                <div className="text-right">Total Issued: {totals.issued.toFixed(2)}</div>
-                <div className="text-right">Total Closing: {totals.closingStock.toFixed(2)}</div>
-                <div className="text-right">Total Value: {formatCurrency(totals.value)}</div>
+          <CardContent className="pt-6">
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
-            </div>
-          </Card.Content>
+            ) : (
+              <>
+                <DataTable columns={columns} data={reportData} />
+
+                {reportData.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-sm">
+                      <div className="p-3 bg-muted rounded-lg">
+                        <div className="text-muted-foreground">Total Opening</div>
+                        <div className="font-semibold">{totals.openingStock.toFixed(2)}</div>
+                      </div>
+                      <div className="p-3 bg-green-50 rounded-lg">
+                        <div className="text-green-600">Total Received</div>
+                        <div className="font-semibold text-green-700">{totals.received.toFixed(2)}</div>
+                      </div>
+                      <div className="p-3 bg-red-50 rounded-lg">
+                        <div className="text-red-600">Total Issued</div>
+                        <div className="font-semibold text-red-700">{totals.issued.toFixed(2)}</div>
+                      </div>
+                      <div className="p-3 bg-blue-50 rounded-lg">
+                        <div className="text-blue-600">Total Closing</div>
+                        <div className="font-semibold text-blue-700">{totals.closingStock.toFixed(2)}</div>
+                      </div>
+                      <div className="p-3 bg-primary/10 rounded-lg">
+                        <div className="text-primary">Total Value</div>
+                        <div className="font-semibold">{formatMoney(totals.value)}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
         </Card>
       </div>
     </PageShell>
   )
 }
+
+export default StockReport

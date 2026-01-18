@@ -1,259 +1,481 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { PageShell } from "@/components/layout/PageShell"
 import { ActionBar } from "@/components/layout/ActionBar"
-import { Card, CardContent } from "@/components/ui/Card"
-import { FormField } from "@/components/forms/FormField"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card"
 import { Input } from "@/components/ui/Input"
 import { Select } from "@/components/ui/Select"
-import { DateInput } from "@/components/ui/DateInput"
 import { Textarea } from "@/components/ui/Textarea"
 import { Button } from "@/components/ui/Button"
+import { Badge } from "@/components/ui/Badge"
 import { DataTable } from "@/components/ui/Table"
 import { useAppStore } from "@/state/useAppStore"
-import { Trash2, Plus } from "lucide-react"
-import { formatDate, formatMoney } from "@/lib/formatters"
+import { api } from "@/services/api"
+import { Trash2, Plus, Search, Edit, PlusCircle, X } from "lucide-react"
+import { formatDate, formatCurrency } from "@/lib/formatters"
+
+const defaultForm = {
+  poNo: "",
+  poDate: new Date().toISOString().split("T")[0],
+  vendorId: "",
+  vendorName: "",
+  indentNo: "",
+  deliveryDate: "",
+  paymentTerms: "",
+  status: "Open",
+  remarks: "",
+}
+
+const defaultLine = { itemId: "", itemName: "", qty: 0, uom: "KG", rate: 0, taxRate: 5, amount: 0 }
 
 export function PurchaseOrder() {
   const { addToast } = useAppStore()
+  const [view, setView] = useState("form")
+  const [purchaseOrders, setPurchaseOrders] = useState([])
+  const [vendors, setVendors] = useState([])
+  const [items, setItems] = useState([])
+  const [indents, setIndents] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [selectedId, setSelectedId] = useState(null)
+  const [searchTerm, setSearchTerm] = useState("")
 
-  const defaultFormData = () => ({
-    poNo: "",
-    poDate: formatDate(new Date(), "YYYY-MM-DD"),
-    vendorId: "",
-    vendorName: "",
-    deliveryDate: "",
-    paymentTerms: "",
-    remarks: "",
-  })
+  const [formData, setFormData] = useState(defaultForm)
+  const [lines, setLines] = useState([{ ...defaultLine }])
 
-  const defaultLines = () => [
-    { id: 1, item: "", specification: "", uom: "Kgs", qty: 0, rate: 0, taxRate: 18, amount: 0 },
-  ]
+  useEffect(() => {
+    loadVendors()
+    loadItems()
+    loadIndents()
+    if (view === "list") loadPurchaseOrders()
+  }, [view])
 
-  const [formData, setFormData] = useState(defaultFormData())
-
-  const [lines, setLines] = useState(defaultLines())
-
-  const handleNew = () => {
-    setFormData(defaultFormData())
-    setLines(defaultLines())
-    addToast({ type: "info", message: "New purchase order" })
+  const loadPurchaseOrders = async () => {
+    setLoading(true)
+    try {
+      const data = await api.purchaseOrders.getAll()
+      setPurchaseOrders(data)
+    } catch (error) {
+      addToast({ type: "error", message: "Failed to load purchase orders" })
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleSave = () => {
-    addToast({ type: "success", message: "Purchase Order saved successfully" })
+  const loadVendors = async () => {
+    const data = await api.vendors.getAll()
+    setVendors(data)
+  }
+
+  const loadItems = async () => {
+    const data = await api.items.getAll()
+    setItems(data)
+  }
+
+  const loadIndents = async () => {
+    const data = await api.indents.getAll()
+    setIndents(data.filter(i => i.status === "Approved"))
+  }
+
+  const generatePONo = () => {
+    const year = new Date().getFullYear()
+    const count = purchaseOrders.length + 1
+    return `PO-${year}-${String(count).padStart(3, "0")}`
+  }
+
+  const handleNew = () => {
+    const poNo = generatePONo()
+    setFormData({ ...defaultForm, poNo })
+    setLines([{ ...defaultLine }])
+    setSelectedId(null)
+    setView("form")
+    addToast({ type: "info", message: "New purchase order form initialized" })
+  }
+
+  const handleSave = async () => {
+    if (!formData.vendorId || !formData.vendorName) {
+      addToast({ type: "error", message: "Please select a vendor" })
+      return
+    }
+
+    if (lines.every(l => !l.itemName && l.qty === 0)) {
+      addToast({ type: "error", message: "Please add at least one item" })
+      return
+    }
+
+    const totalAmount = lines.reduce((sum, l) => sum + l.amount, 0)
+    const gstAmount = lines.reduce((sum, l) => sum + (l.amount * l.taxRate / 100), 0)
+
+    setLoading(true)
+    try {
+      const poData = {
+        ...formData,
+        items: lines.filter(l => l.itemName && l.qty > 0),
+        totalAmount,
+        gstAmount,
+        grandTotal: totalAmount + gstAmount,
+      }
+
+      if (selectedId) {
+        await api.purchaseOrders.update(selectedId, poData)
+        addToast({ type: "success", message: "Purchase Order updated successfully" })
+      } else {
+        await api.purchaseOrders.create(poData)
+        addToast({ type: "success", message: "Purchase Order created successfully" })
+      }
+      handleNew()
+      loadPurchaseOrders()
+    } catch (error) {
+      addToast({ type: "error", message: "Failed to save purchase order" })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!selectedId) return
+    if (!window.confirm("Are you sure you want to delete this purchase order?")) return
+
+    setLoading(true)
+    try {
+      await api.purchaseOrders.delete(selectedId)
+      addToast({ type: "success", message: "Purchase Order deleted successfully" })
+      handleNew()
+      loadPurchaseOrders()
+    } catch (error) {
+      addToast({ type: "error", message: "Failed to delete purchase order" })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handlePrint = () => {
+    window.print()
+    addToast({ type: "success", message: "Print dialog opened" })
+  }
+
+  const handleRowClick = (row) => {
+    setSelectedId(row.id)
+    setFormData({
+      poNo: row.poNo,
+      poDate: row.poDate,
+      vendorId: row.vendorId,
+      vendorName: row.vendorName,
+      indentNo: row.indentNo || "",
+      deliveryDate: row.deliveryDate || "",
+      paymentTerms: row.paymentTerms || "",
+      status: row.status,
+      remarks: row.remarks || "",
+    })
+    setLines(row.items?.length > 0 ? row.items : [{ ...defaultLine }])
+    setView("form")
+  }
+
+  const handleVendorChange = (vendorId) => {
+    const vendor = vendors.find(v => v.id === Number(vendorId))
+    setFormData({
+      ...formData,
+      vendorId: Number(vendorId),
+      vendorName: vendor?.vendorName || "",
+      paymentTerms: vendor?.paymentTerms || ""
+    })
   }
 
   const addLine = () => {
-    setLines([
-      ...lines,
-      { id: lines.length + 1, item: "", specification: "", uom: "Kgs", qty: 0, rate: 0, taxRate: 18, amount: 0 },
-    ])
+    setLines([...lines, { ...defaultLine }])
   }
 
-  const removeLine = (id) => {
-    setLines(lines.filter((line) => line.id !== id))
+  const removeLine = (index) => {
+    if (lines.length === 1) {
+      addToast({ type: "warning", message: "At least one line is required" })
+      return
+    }
+    setLines(lines.filter((_, i) => i !== index))
   }
 
-  const updateLine = (id, field, value) => {
-    setLines(
-      lines.map((line) => {
-        if (line.id === id) {
-          const updated = { ...line, [field]: value }
-          if (field === "qty" || field === "rate") {
-            updated.amount = updated.qty * updated.rate
-          }
-          return updated
-        }
-        return line
-      }),
-    )
+  const updateLine = (index, field, value) => {
+    const newLines = [...lines]
+    newLines[index] = { ...newLines[index], [field]: value }
+    
+    if (field === "itemId") {
+      const selectedItem = items.find(i => i.id === Number(value))
+      if (selectedItem) {
+        newLines[index].itemName = selectedItem.itemName
+        newLines[index].uom = selectedItem.uom
+        newLines[index].rate = selectedItem.rate
+        newLines[index].taxRate = selectedItem.gstRate || 5
+        newLines[index].amount = newLines[index].qty * selectedItem.rate
+      }
+    }
+    
+    if (field === "qty" || field === "rate") {
+      newLines[index].amount = newLines[index].qty * newLines[index].rate
+    }
+    
+    setLines(newLines)
   }
 
-  const columns = [
-    {
-      accessorKey: "item",
-      header: "Item",
-      cell: ({ row }) => (
-        <Input
-          value={row.original.item}
-          onChange={(e) => updateLine(row.original.id, "item", e.target.value)}
-          placeholder="Select item"
-          className="min-w-[200px]"
-        />
-      ),
-    },
-    {
-      accessorKey: "specification",
-      header: "Specification",
-      cell: ({ row }) => (
-        <Input
-          value={row.original.specification}
-          onChange={(e) => updateLine(row.original.id, "specification", e.target.value)}
-          placeholder="Specification"
-          className="min-w-[200px]"
-        />
-      ),
-    },
-    {
-      accessorKey: "uom",
-      header: "UOM",
-      cell: ({ row }) => (
-        <Select value={row.original.uom} onChange={(e) => updateLine(row.original.id, "uom", e.target.value)}>
-          <option value="Kgs">Kgs</option>
-          <option value="Mtr">Mtr</option>
-          <option value="Pcs">Pcs</option>
-        </Select>
-      ),
-    },
-    {
-      accessorKey: "qty",
-      header: "Qty",
-      cell: ({ row }) => (
-        <Input
-          type="number"
-          value={row.original.qty}
-          onChange={(e) => updateLine(row.original.id, "qty", Number.parseFloat(e.target.value) || 0)}
-          className="w-24"
-        />
-      ),
-    },
-    {
-      accessorKey: "rate",
-      header: "Rate",
-      cell: ({ row }) => (
-        <Input
-          type="number"
-          value={row.original.rate}
-          onChange={(e) => updateLine(row.original.id, "rate", Number.parseFloat(e.target.value) || 0)}
-          className="w-28"
-        />
-      ),
-    },
-    {
-      accessorKey: "taxRate",
-      header: "Tax %",
-      cell: ({ row }) => (
-        <Input
-          type="number"
-          value={row.original.taxRate}
-          onChange={(e) => updateLine(row.original.id, "taxRate", Number.parseFloat(e.target.value) || 0)}
-          className="w-20"
-        />
-      ),
-    },
-    {
-      accessorKey: "amount",
-      header: "Amount",
-      cell: ({ row }) => <span className="font-medium">{formatMoney(row.original.amount)}</span>,
+  const listColumns = [
+    { accessorKey: "poNo", header: "PO No." },
+    { accessorKey: "poDate", header: "Date", cell: ({ row }) => formatDate(row.original.poDate) },
+    { accessorKey: "vendorName", header: "Vendor" },
+    { accessorKey: "indentNo", header: "Indent No." },
+    { accessorKey: "grandTotal", header: "Amount", cell: ({ row }) => formatCurrency(row.original.grandTotal) },
+    { 
+      accessorKey: "status", 
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.original.status
+        const variant = status === "Completed" ? "success" : status === "Partial" ? "warning" : "default"
+        return <Badge variant={variant}>{status}</Badge>
+      }
     },
     {
       id: "actions",
-      header: "",
+      header: "Actions",
       cell: ({ row }) => (
-        <Button variant="ghost" size="icon" onClick={() => removeLine(row.original.id)}>
-          <Trash2 className="w-4 h-4 text-destructive" />
+        <Button variant="ghost" size="sm" onClick={() => handleRowClick(row.original)}>
+          <Edit className="w-4 h-4" />
         </Button>
       ),
     },
   ]
 
-  const subtotal = lines.reduce((sum, line) => sum + line.amount, 0)
-  const totalTax = lines.reduce((sum, line) => sum + (line.amount * line.taxRate) / 100, 0)
+  const subtotal = lines.reduce((sum, l) => sum + l.amount, 0)
+  const totalTax = lines.reduce((sum, l) => sum + (l.amount * l.taxRate / 100), 0)
   const grandTotal = subtotal + totalTax
+
+  const filteredPOs = purchaseOrders.filter(po =>
+    po.poNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    po.vendorName?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   return (
     <PageShell title="Purchase Order">
-      <ActionBar onNew={handleNew} onSave={handleSave} onPrint={() => {}} />
+      <ActionBar
+        onNew={handleNew}
+        onSave={view === "form" ? handleSave : undefined}
+        onQuery={() => setView("list")}
+        onDelete={selectedId && view === "form" ? handleDelete : undefined}
+        onPrint={view === "form" ? handlePrint : undefined}
+      />
 
-      <Card>
-        <CardContent className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <FormField label="PO No">
-              <Input value={formData.poNo} placeholder="Auto-generated" disabled />
-            </FormField>
-
-            <FormField label="PO Date" required>
-              <DateInput
+      {view === "list" ? (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Purchase Orders List</CardTitle>
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search POs..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 w-64"
+                  />
+                </div>
+                <Button onClick={handleNew}>
+                  <Plus className="w-4 h-4 mr-2" />New PO
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+              </div>
+            ) : (
+              <DataTable columns={listColumns} data={filteredPOs} onRowClick={handleRowClick} />
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>{selectedId ? "Edit Purchase Order" : "New Purchase Order"}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Input
+                label="PO No."
+                value={formData.poNo}
+                disabled
+                placeholder="Auto-generated"
+              />
+              <Input
+                label="PO Date"
+                type="date"
                 value={formData.poDate}
                 onChange={(e) => setFormData({ ...formData, poDate: e.target.value })}
+                required
               />
-            </FormField>
-
-            <FormField label="Delivery Date" required>
-              <DateInput
+              <Input
+                label="Delivery Date"
+                type="date"
                 value={formData.deliveryDate}
                 onChange={(e) => setFormData({ ...formData, deliveryDate: e.target.value })}
               />
-            </FormField>
-          </div>
+              <Select
+                label="Status"
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                options={[
+                  { value: "Open", label: "Open" },
+                  { value: "Partial", label: "Partial" },
+                  { value: "Completed", label: "Completed" },
+                  { value: "Cancelled", label: "Cancelled" },
+                ]}
+              />
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <FormField label="Vendor ID" required>
-              <Input
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Select
+                label="Vendor"
                 value={formData.vendorId}
-                onChange={(e) => setFormData({ ...formData, vendorId: e.target.value })}
-                placeholder="Enter vendor ID"
+                onChange={(e) => handleVendorChange(e.target.value)}
+                options={[
+                  { value: "", label: "Select Vendor" },
+                  ...vendors.map(v => ({ value: v.id, label: `${v.vendorCode} - ${v.vendorName}` }))
+                ]}
+                required
               />
-            </FormField>
-
-            <FormField label="Vendor Name" required>
               <Input
+                label="Vendor Name"
                 value={formData.vendorName}
-                onChange={(e) => setFormData({ ...formData, vendorName: e.target.value })}
-                placeholder="Vendor name"
+                disabled
               />
-            </FormField>
-          </div>
+              <Select
+                label="Against Indent"
+                value={formData.indentNo}
+                onChange={(e) => setFormData({ ...formData, indentNo: e.target.value })}
+                options={[
+                  { value: "", label: "Select Indent (Optional)" },
+                  ...indents.map(i => ({ value: i.indentNo, label: `${i.indentNo} - ${i.department}` }))
+                ]}
+              />
+            </div>
 
-          <FormField label="Payment Terms">
             <Input
+              label="Payment Terms"
               value={formData.paymentTerms}
               onChange={(e) => setFormData({ ...formData, paymentTerms: e.target.value })}
               placeholder="e.g., Net 30 days"
             />
-          </FormField>
 
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold">PO Lines</h3>
-              <Button onClick={addLine} size="sm" variant="accent">
-                <Plus className="w-4 h-4" />
-                Add Line
+            <div className="border rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold">PO Items</h3>
+                <Button size="sm" onClick={addLine}>
+                  <PlusCircle className="w-4 h-4 mr-2" />Add Item
+                </Button>
+              </div>
+              
+              <div className="space-y-3">
+                {lines.map((line, index) => (
+                  <div key={index} className="grid grid-cols-12 gap-2 items-end">
+                    <div className="col-span-3">
+                      <Select
+                        label={index === 0 ? "Item" : undefined}
+                        value={line.itemId}
+                        onChange={(e) => updateLine(index, "itemId", e.target.value)}
+                        options={[
+                          { value: "", label: "Select Item" },
+                          ...items.map(i => ({ value: i.id, label: i.itemName }))
+                        ]}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Input
+                        label={index === 0 ? "Qty" : undefined}
+                        type="number"
+                        value={line.qty}
+                        onChange={(e) => updateLine(index, "qty", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <Input
+                        label={index === 0 ? "UOM" : undefined}
+                        value={line.uom}
+                        disabled
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Input
+                        label={index === 0 ? "Rate" : undefined}
+                        type="number"
+                        value={line.rate}
+                        onChange={(e) => updateLine(index, "rate", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="col-span-1">
+                      <Input
+                        label={index === 0 ? "Tax %" : undefined}
+                        type="number"
+                        value={line.taxRate}
+                        onChange={(e) => updateLine(index, "taxRate", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Input
+                        label={index === 0 ? "Amount" : undefined}
+                        value={formatCurrency(line.amount)}
+                        disabled
+                      />
+                    </div>
+                    <div className="col-span-1 pb-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeLine(index)}
+                        disabled={lines.length === 1}
+                      >
+                        <X className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-between items-start">
+              <div className="flex-1 max-w-md">
+                <Textarea
+                  label="Remarks"
+                  value={formData.remarks}
+                  onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+                  placeholder="Enter any remarks"
+                  rows={3}
+                />
+              </div>
+              <div className="w-72 space-y-2 p-4 bg-muted rounded-lg">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal:</span>
+                  <span className="font-medium">{formatCurrency(subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Total Tax:</span>
+                  <span className="font-medium">{formatCurrency(totalTax)}</span>
+                </div>
+                <div className="flex justify-between text-base font-semibold pt-2 border-t border-border">
+                  <span>Grand Total:</span>
+                  <span>{formatCurrency(grandTotal)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setView("list")}>Cancel</Button>
+              <Button onClick={handleSave} disabled={loading}>
+                {loading ? "Saving..." : "Save PO"}
               </Button>
             </div>
-            <DataTable columns={columns} data={lines} pageSize={10} />
-          </div>
-
-          <div className="flex justify-end">
-            <div className="w-80 space-y-2 p-4 bg-muted rounded-lg">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal:</span>
-                <span className="font-medium">{formatMoney(subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span>Total Tax:</span>
-                <span className="font-medium">{formatMoney(totalTax)}</span>
-              </div>
-              <div className="flex justify-between text-base font-semibold pt-2 border-t border-border">
-                <span>Grand Total:</span>
-                <span>{formatMoney(grandTotal)}</span>
-              </div>
-            </div>
-          </div>
-
-          <FormField label="Remarks">
-            <Textarea
-              value={formData.remarks}
-              onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-              placeholder="Enter any remarks"
-              rows={3}
-            />
-          </FormField>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </PageShell>
   )
 }
+
+export default PurchaseOrder

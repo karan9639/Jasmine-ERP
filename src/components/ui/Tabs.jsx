@@ -1,38 +1,52 @@
-"use client"
+'use client';
 
 import { cn } from "@/lib/utils"
-import { createContext, useContext, useMemo, useState } from "react"
+import { useState, createContext, useContext, Children, cloneElement, isValidElement } from "react"
 
+// Context for sharing tab state
 const TabsContext = createContext(null)
 
-function useTabsContext() {
-  const ctx = useContext(TabsContext)
-  if (!ctx) return null
-  return ctx
+function useTabs() {
+  const context = useContext(TabsContext)
+  if (!context) {
+    throw new Error("Tabs components must be used within a Tabs provider")
+  }
+  return context
 }
 
-// Supports both patterns:
-// 1) <Tabs tabs={[{id,label}]}><TabsContent id="..." /></Tabs>
-// 2) <Tabs defaultValue="..."><TabsList>...<TabsTrigger value="..." />...</TabsList><TabsContent value="..." /></Tabs>
 export function Tabs({ defaultValue, tabs, children, className }) {
-  const initial = defaultValue ?? (Array.isArray(tabs) && tabs[0]?.id ? tabs[0].id : undefined)
-  const [activeTab, setActiveTab] = useState(initial)
+  const [activeTab, setActiveTab] = useState(defaultValue || (tabs?.[0]?.id))
 
-  const value = useMemo(() => ({ activeTab, setActiveTab }), [activeTab])
-
-  return (
-    <TabsContext.Provider value={value}>
-      <div className={cn("w-full", className)}>
-        {Array.isArray(tabs) && tabs.length ? (
+  // Support the simple tabs prop pattern
+  if (tabs && Array.isArray(tabs)) {
+    return (
+      <TabsContext.Provider value={{ activeTab, setActiveTab }}>
+        <div className={cn("w-full", className)}>
           <TabsList>
-            {tabs.map((t) => (
-              <TabsTrigger key={t.id} value={t.id}>
-                {t.label}
+            {tabs.map((tab) => (
+              <TabsTrigger key={tab.id} value={tab.id}>
+                {tab.label}
               </TabsTrigger>
             ))}
           </TabsList>
-        ) : null}
-        <div className={cn(Array.isArray(tabs) && tabs.length ? "mt-2" : "")}>{children}</div>
+          <div className="mt-4">
+            {Children.map(children, (child) => {
+              if (isValidElement(child) && child.type === TabsPanel) {
+                return cloneElement(child)
+              }
+              return child
+            })}
+          </div>
+        </div>
+      </TabsContext.Provider>
+    )
+  }
+
+  // Standard compound component pattern
+  return (
+    <TabsContext.Provider value={{ activeTab, setActiveTab }}>
+      <div className={cn("w-full", className)}>
+        {children}
       </div>
     </TabsContext.Provider>
   )
@@ -47,13 +61,13 @@ export function TabsList({ children, className }) {
 }
 
 export function TabsTrigger({ value, children, className }) {
-  const ctx = useTabsContext()
-  const isActive = ctx ? ctx.activeTab === value : false
+  const { activeTab, setActiveTab } = useTabs()
+  const isActive = activeTab === value
 
   return (
     <button
       type="button"
-      onClick={() => ctx?.setActiveTab(value)}
+      onClick={() => setActiveTab(value)}
       className={cn(
         "inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1.5 text-sm font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
         isActive ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
@@ -65,10 +79,25 @@ export function TabsTrigger({ value, children, className }) {
   )
 }
 
-export function TabsContent({ value, id, children, className }) {
-  const ctx = useTabsContext()
-  const tabId = value ?? id
-  if (!ctx) return <div className={cn(className)}>{children}</div>
-  if (ctx.activeTab !== tabId) return null
-  return <div className={cn(className)}>{children}</div>
+export function TabsContent({ value, children, className }) {
+  const { activeTab } = useTabs()
+  if (activeTab !== value) return null
+
+  return <div className={cn("mt-2", className)}>{children}</div>
 }
+
+// Alias for backward compatibility with Tabs.Panel pattern
+export function TabsPanel({ id, children, className }) {
+  const { activeTab } = useTabs()
+  if (activeTab !== id) return null
+
+  return <div className={cn("", className)}>{children}</div>
+}
+
+// Add sub-component syntax support
+Tabs.List = TabsList
+Tabs.Trigger = TabsTrigger
+Tabs.Content = TabsContent
+Tabs.Panel = TabsPanel
+
+export default Tabs
